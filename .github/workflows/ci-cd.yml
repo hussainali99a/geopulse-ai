@@ -1,4 +1,4 @@
-name: GeoPulse CI/CD
+name: GeoPulse CI
 
 on:
   push:
@@ -62,52 +62,3 @@ jobs:
 
       - name: Build frontend
         run: npm run build
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist
-          if-no-files-found: error
-
-  deploy:
-    name: Deploy
-    needs:
-      - backend-check
-      - frontend-build
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Download frontend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend-dist
-
-      - name: Deploy backend to Render
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-        if: ${{ env.RENDER_DEPLOY_HOOK_URL != '' }}
-        run: |
-          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
-
-      - name: Deploy frontend to Netlify
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        if: ${{ env.NETLIFY_AUTH_TOKEN != '' && env.NETLIFY_SITE_ID != '' }}
-        run: |
-          npm install -g netlify-cli
-          netlify deploy --prod --dir=frontend-dist --auth="$NETLIFY_AUTH_TOKEN" --site="$NETLIFY_SITE_ID"
-
-      - name: Skip deploy message
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        if: ${{ env.RENDER_DEPLOY_HOOK_URL == '' && env.NETLIFY_AUTH_TOKEN == '' }}
-        run: |
-          echo "No deployment secrets configured. CI passed, but no deployment was triggered."
